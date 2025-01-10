@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:movielab/models/item_models/show_models/show_preview_model.dart';
+import 'package:movielab/modules/api/api_requester.dart';
 import 'package:movielab/modules/tools/image_quality_increaser.dart';
 
 class ActorPreview {
@@ -27,10 +28,10 @@ class ActorPreview {
 
   factory ActorPreview.fromJson(Map<String, dynamic> json) {
     return ActorPreview(
-      id: json['id'],
-      name: json['name'],
-      image: imageQualityIncreaser(json['image']),
-      asCharacter: json['asCharacter'] ?? "",
+      id: json['id']?.toString() ?? "", // 将 id 转换为字符串
+      name: json['name'] ?? "",
+      image: imageQualityIncreaser(json['profile_path']), // 使用 ImageUtils.addPrefix 添加前缀
+      asCharacter: json['character'] ?? "", // TMDb 使用 character 表示角色
     );
   }
 

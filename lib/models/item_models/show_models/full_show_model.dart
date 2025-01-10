@@ -1,4 +1,5 @@
 import 'package:movielab/models/item_models/actor_models/actor_preview_model.dart';
+import 'package:movielab/modules/api/api_requester.dart';
 import 'package:movielab/modules/tools/image_quality_increaser.dart';
 import 'show_preview_model.dart';
 
@@ -90,57 +91,88 @@ class FullShow {
 
   factory FullShow.fromJson(Map<String, dynamic> json) {
     return FullShow(
-      id: json['id'] ?? "",
+      id: json['id']?.toString() ?? "", // TMDb 返回的 id 是整数
       title: json['title'] ?? "",
-      type: json['type'] ?? json['role'] ?? "",
-      image: imageQualityIncreaser(json['image']),
+      type: json['media_type'] ?? "", // TMDb 使用 media_type 来区分类型
+      image: ImageUtils.addPrefix(json['poster_path']), // 使用 ImageUtils.addPrefix 添加前缀
       images: json['images'] != null
-          ? ImageData.getImages(json['images']) ?? []
+          ? (json['images']['backdrops'] as List<dynamic>?)
+          ?.map((image) => ImageUtils.addPrefix(image['file_path']))
+          .toList() ?? []
           : [],
-      posters: json['posters'] != null
-          ? PosterData.getPosters(json['posters']) ?? <PosterData>[]
+      posters: json['images']?['posters'] != null
+          ? (json['images']['posters'] as List<dynamic>?)
+          ?.map((poster) => PosterData.fromJson({
+        'file_path': ImageUtils.addPrefix(poster['file_path']),
+        'other_fields': poster, // 保留其他字段
+      }))
+          .toList() ?? <PosterData>[]
           : <PosterData>[],
-      year: json['year'] ?? "",
-      genres: json['genres'] ?? "",
-      releaseDate: json['releaseDate'] ?? "",
-      yearEnd: json["tvSeriesInfo"]?['yearEnd'] ?? "",
-      runTime: json['runtimeStr'] ?? "",
-      plot: json['plot'] ?? "",
-      awards: json['awards'] ?? "",
-      directors: json['directors'] ?? "",
-      writers: json['writers'] ?? "",
-      creators: json["tvSeriesInfo"]?['creators'] ?? "",
-      seasons: json["tvSeriesInfo"] != null
-          ? List<dynamic>.generate(
-              json["tvSeriesInfo"]?['seasons'].length, (index) => [])
+      year: json['release_date']?.split('-')[0] ?? "", // 从 release_date 中提取年份
+      genres: (json['genres'] as List<dynamic>?)?.map((genre) => genre['name']).join(", ") ?? "", // 将 genres 列表转换为逗号分隔的字符串
+      releaseDate: json['release_date'] ?? "",
+      yearEnd: json['last_air_date']?.split('-')[0] ?? "", // 对于电视剧，使用 last_air_date 提取结束年份
+      runTime: json['runtime']?.toString() ?? "", // TMDb 使用 runtime 表示电影时长
+      plot: json['overview'] ?? "", // TMDb 使用 overview 表示剧情简介
+      awards: "", // TMDb API 不提供奖项信息
+      directors: (json['credits']?['crew'] as List<dynamic>?)
+          ?.where((crew) => crew['job'] == 'Director')
+          .map((crew) => crew['name'])
+          .join(", ") ?? "", // 从 crew 中筛选出导演
+      writers: (json['credits']?['crew'] as List<dynamic>?)
+          ?.where((crew) => crew['job'] == 'Writer')
+          .map((crew) => crew['name'])
+          .join(", ") ?? "", // 从 crew 中筛选出编剧
+      creators: (json['created_by'] as List<dynamic>?)
+          ?.map((creator) => creator['name'])
+          .join(", ") ?? "", // 对于电视剧，使用 created_by 表示创作者
+      seasons: json['seasons'] != null
+          ? List<dynamic>.generate(json['seasons'].length, (index) => [])
           : [],
-      actorList: json["actorList"] != null
-          ? List<ActorPreview>.generate(json["actorList"].length,
-              (index) => ActorPreview.fromJson(json["actorList"][index]))
+      actorList: json['credits']?['cast'] != null
+          ? List<ActorPreview>.generate(
+        json['credits']['cast'].length,
+            (index) {
+          final actor = json['credits']['cast'][index];
+          return ActorPreview.fromJson({
+            'id': actor['id']?.toString() ?? "", // 确保 id 是 String 类型
+            'name': actor['name'] ?? "", // 处理 name 为 null 的情况
+            'profile_path': actor['profile_path'] == null ? "" :ImageUtils.addPrefix(actor['profile_path']), // 处理 profile_path 为 null 的情况
+            'character': actor['character'] ?? "", // 处理 character 为 null 的情况
+          });
+        },
+      )
           : [],
-      countries: json['countries'] ?? "",
-      languages: json['languages'] ?? "",
-      companies: json['companies'] ?? "",
-      imDbRating: json['imDbRating'] ?? "0.0",
-      imDbVotes: json['imDbRatingVotes'] ?? "0",
-      contentRating: json['contentRating'] ?? "",
-      otherRatings: json['ratings'] ?? {},
-      budget: json["boxOffice"]?['budget'] ?? "",
-      openingWeekendUSA: json["boxOffice"]?['openingWeekendUSA'] ?? "",
-      grossUSA: json["boxOffice"]?['gtossUSA'] ?? "",
-      cumulativeWorldwideGross:
-          json["boxOffice"]?['cumulativeWorldwideGross'] ?? "",
-      similars: getSimilars(json: json['similars'] ?? []) ?? [],
+      countries: (json['production_countries'] as List<dynamic>?)
+          ?.map((country) => country['name'])
+          .join(", ") ?? "", // 将 production_countries 转换为逗号分隔的字符串
+      languages: (json['spoken_languages'] as List<dynamic>?)
+          ?.map((language) => language['name'])
+          .join(", ") ?? "", // 将 spoken_languages 转换为逗号分隔的字符串
+      companies: (json['production_companies'] as List<dynamic>?)
+          ?.map((company) => company['name'])
+          .join(", ") ?? "", // 将 production_companies 转换为逗号分隔的字符串
+      imDbRating: json['vote_average']?.toString() ?? "0.0", // TMDb 使用 vote_average 表示评分
+      imDbVotes: json['vote_count']?.toString() ?? "0", // TMDb 使用 vote_count 表示投票数
+      contentRating: json['adult'] == true ? "R" : "PG", // 根据 adult 字段判断内容分级
+      otherRatings: {}, // TMDb API 不提供其他评分信息
+      budget: json['budget']?.toString() ?? "",
+      openingWeekendUSA: "", // TMDb API 不提供开映周末票房信息
+      grossUSA: "", // TMDb API 不提供美国总票房信息
+      cumulativeWorldwideGross: json['revenue']?.toString() ?? "", // TMDb 使用 revenue 表示全球总票房
+      similars: getSimilars(json: json['similar']?['results'] ?? []) ?? [], // TMDb 使用 similar 表示类似作品
       tagline: json['tagline'] ?? "",
-      keywords: json['keywords'].toString().replaceAll(",", ", "),
-      weekend: json['weekend'] ?? "",
-      gross: json['gross'] ?? "",
-      weeks: json['weeks'] ?? "",
-      worldwideLifetimeGross: json['worldwideLifetimeGross'] ?? "",
-      domesticLifetimeGross: json['domesticLifetimeGross'] ?? "",
-      domestic: json['domestic'] ?? "",
-      foreignLifetimeGross: json['foreignLifetimeGross'] ?? "",
-      foreign: json['foreign'] ?? "",
+      keywords: (json['keywords']?['keywords'] as List<dynamic>?)
+          ?.map((keyword) => keyword['name'])
+          .join(", ") ?? "", // 将 keywords 转换为逗号分隔的字符串
+      weekend: "", // TMDb API 不提供周末票房信息
+      gross: "", // TMDb API 不提供总票房信息
+      weeks: "", // TMDb API 不提供上映周数信息
+      worldwideLifetimeGross: json['revenue']?.toString() ?? "", // TMDb 使用 revenue 表示全球总票房
+      domesticLifetimeGross: "", // TMDb API 不提供美国国内总票房信息
+      domestic: "", // TMDb API 不提供美国国内票房信息
+      foreignLifetimeGross: "", // TMDb API 不提供海外总票房信息
+      foreign: "", // TMDb API 不提供海外票房信息
     );
   }
 }
@@ -191,7 +223,7 @@ class PosterData {
 
   factory PosterData.fromJson(Map<String, dynamic> json) {
     return PosterData(
-      id: json['id'] ?? "",
+      id: json['id']?.toString() ?? "",
       link: json['link'] ?? "",
     );
   }

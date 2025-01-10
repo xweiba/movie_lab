@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:movielab/modules/api/api_requester.dart';
 import 'package:movielab/modules/tools/image_quality_increaser.dart';
 
 // Movie or TV show preview model class
@@ -68,52 +69,35 @@ class ShowPreview {
 
   factory ShowPreview.fromJson(Map<String, dynamic> json) {
     return ShowPreview(
-      id: json['id'] ?? "",
-      rank: json['rank'] ?? "",
-      title: json['title'] ?? "",
-      type: json['type'] ?? json['role'] ?? "",
-      crew: json['crew'] ?? json['stars'] ?? json['role'] ?? "",
-      image: imageQualityIncreaser(json['image']),
-      year: json['year'] ??
-          (json['description'] != null
-              ? json['description']
-                  .toString()
-                  .replaceAll("(", "")
-                  .replaceAll(")", "\n")
-              : ""),
-      released: json['released'] ?? "",
-
-      // Imdb rating should'nt be null, but sometimes it is.
-      imDbRating:
-          json['imDbRating'] == "" ? "0.0" : json['imDbRating'] ?? "0.0",
-      imDbVotes: json['imDbRatingCount'] ?? "0.0",
-      seasonNumber: json['seasonNumber'] ?? "",
-      episodeNumber: json['episodeNumber'] ?? "",
-      plot: json['plot'] ?? "",
-      weekend: json['weekend'] ?? "",
-      gross: json['gross'] ?? "",
-      weeks: json['weeks'] ?? "",
-      worldwideLifetimeGross: json['worldwideLifetimeGross'] ?? "",
-      domesticLifetimeGross: json['domesticLifetimeGross'] ?? "",
-      domestic: json['domestic'] ?? "",
-      foreignLifetimeGross: json['foreignLifetimeGross'] ?? "",
-      foreign: json['foreign'] ?? "",
-      companies: json['companies'] ?? "",
-      contentRating: json['contentRating'] ?? "",
-      countries: json['countries'] ?? "",
-      genres: json['genres'] ?? "",
-      languages: json['languages'] ?? "",
-      similars: json['similars'] == null
-          ? null
-          : [
-              for (var similar in json['similars']!)
-                ShowPreview.fromJson(similar)
-            ],
-      watchDate:
-          json["watchDate"] == null ? null : DateTime.parse(json["watchDate"]),
-      watchTime: json['watchTime'] == null
-          ? null
-          : TimeOfDay.fromDateTime(DateTime.parse(json["watchDate"])),
+      id: json['id'].toString(),
+      rank: "",
+      title: json['title'] ?? json['name'] ?? "",
+      type: json['media_type'] ?? "",
+      crew: "",
+      image: ImageUtils.addPrefix(json['poster_path']), // 添加前缀
+      year: json['release_date']?.split("-")[0] ?? "",
+      released: json['release_date'] ?? "",
+      imDbRating: json['vote_average'].toString(),
+      imDbVotes: json['vote_count'].toString(),
+      seasonNumber: "",
+      episodeNumber: "",
+      plot: json['overview'] ?? "",
+      weekend: "",
+      gross: "",
+      weeks: "",
+      worldwideLifetimeGross: "",
+      domesticLifetimeGross: "",
+      domestic: "",
+      foreignLifetimeGross: "",
+      foreign: "",
+      genres: json['genre_ids']?.join(", ") ?? "",
+      countries: "",
+      languages: json['original_language'] ?? "",
+      companies: "",
+      contentRating: "",
+      watchDate: null,
+      watchTime: null,
+      similars: null,
     );
   }
 
