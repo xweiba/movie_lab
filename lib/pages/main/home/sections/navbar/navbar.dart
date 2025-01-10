@@ -15,7 +15,7 @@ class HomeNavbar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(left: 10, right: 10, bottom: 7.5),
       width: double.infinity,
-      height: 100,
+      height: 70,
       decoration: BoxDecoration(
         color: kSecondaryColor,
         boxShadow: [
